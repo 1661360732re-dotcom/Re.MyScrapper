@@ -2,39 +2,230 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="12dp">
 
-    <EditText
-        android:id="@+id/editUrl"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="https://example.com"
-        android:inputType="textUri"
-        android:maxLines="1" />
+    <!-- 左侧：控制面板 -->
+    <ScrollView
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:paddingEnd="12dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="horizontal">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-        <Button android:id="@+id/btnStart" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="开始" />
-        <Button android:id="@+id/btnClear" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="清空" />
-        <Button android:id="@+id/btnSave" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="保存" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="目标 URL"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/editUrl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="https://example.com"
+                android:inputType="textUri"
+                android:maxLines="1" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="CSS 选择器"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/editSelector"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="留空则抓取全网页"
+                android:inputType="text" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="提取模式"
+                android:textStyle="bold" />
+
+            <Spinner
+                android:id="@+id/spinnerMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="正则表达式过滤"
+                android:textStyle="bold" />
+
+            <EditText
+                android:id="@+id/editRegex"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="如: [A-Z0-9]{4}-[A-Z0-9]{4}"
+                android:inputType="text" />
+
+            <!-- 高级请求设置 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="▶ 高级请求设置"
+                android:textStyle="bold"
+                android:background="#E0E0E0"
+                android:padding="8dp"
+                android:id="@+id/tvAdvancedToggle" />
+
+            <LinearLayout
+                android:id="@+id/layoutAdvanced"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <EditText
+                    android:id="@+id/editUserAgent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="User-Agent"
+                    android:maxLines="2" />
+
+                <EditText
+                    android:id="@+id/editCookie"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Cookie"
+                    android:maxLines="3" />
+                
+                <EditText
+                    android:id="@+id/editDelay"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="请求延迟(毫秒)"
+                    android:inputType="number" />
+            </LinearLayout>
+
+            <!-- 外观调节设置 -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="▶ 外观与界面调节"
+                android:textStyle="bold"
+                android:background="#E0E0E0"
+                android:padding="8dp"
+                android:id="@+id/tvUiToggle" />
+
+            <LinearLayout
+                android:id="@+id/layoutUi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:paddingTop="8dp">
+
+                <TextView
+android:layout_height="wrap_content"
+                android:text="结果字体大小 (12 - 30)" />
+
+            <SeekBar
+                android:id="@+id/seekBarFontSize"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="18"
+                android:progress="2" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="结果文字颜色" />
+
+            <Spinner
+                android:id="@+id/spinnerTextColor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="结果背景颜色" />
+
+            <Spinner
+                android:id="@+id/spinnerBgColor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="开始执行 (Start)" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+            
+            <Button
+                android:id="@+id/btnSaveTxt"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="存 TXT" />
+            
+            <Button
+                android:id="@+id/btnSaveJson"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="4dp"
+                android:text="存 JSON" />
+        </LinearLayout>
+
     </LinearLayout>
+</ScrollView>
+
+<!-- 右侧：结果展示 -->
+<LinearLayout
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="2"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="控制台就绪"
+        android:textStyle="bold"
+        android:paddingBottom="8dp" />
 
     <ScrollView
+        android:id="@+id/scrollViewResult"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="8dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent"
+        android:background="#121212"
+        android:padding="12dp">
 
         <TextView
             android:id="@+id/resultText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:textColor="#00FF00"
             android:textIsSelectable="true"
-            android:textSize="14sp" />
-    </ScrollView>
+            android:textSize="14sp"
+            android:fontFamily="monospace" />
+    </ScrollView﹥
+        </LinearLayout>
 </LinearLayout>
