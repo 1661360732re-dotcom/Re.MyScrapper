@@ -139,6 +139,34 @@ class MainActivity : AppCompatActivity() {
         return list
     }
 
-    private fun saveResults() {
+
+private fun saveResults() {
         val fileName = "scraped_${System.currentTimeMillis()}.txt"
-        val content = scrapedData.j
+        val content = scrapedData.joinToString("\n")
+
+        lifecycleScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { writeFile(fileName, content) }.getOrDefault(false)
+            }
+            Toast.makeText(this@MainActivity, if (ok) "已保存到 Downloads/$fileName" else "保存失败", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun writeFile(fileName: String, content: String): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
+            contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) } ?: return false
+            true
+        } else {
+            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            if (!dir.exists()) dir.mkdirs()
+            File(dir, fileName).writeText(content)
+            true
+        }
+    }
+    }
