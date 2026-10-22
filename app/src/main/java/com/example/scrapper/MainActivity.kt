@@ -15,7 +15,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -139,7 +141,4 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveResults() {
         val fileName = "scraped_${System.currentTimeMillis()}.txt"
-        val content = scrapedData.joinToString("\n")
-
-        lifecycleScope.launch {
-            val ok = withConte
+        val content = scrapedData.j
