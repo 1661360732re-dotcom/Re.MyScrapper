@@ -1,21 +1,17 @@
 package com.example.scrapper
 
-import android.Manifest
 import android.content.ContentValues
-import android.content.pm.PackageManager
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
-import android.widget.Button
-import android.widget.EditText
-import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
+import android.view.View
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -28,145 +24,314 @@ import java.util.concurrent.TimeUnit
 class MainActivity : AppCompatActivity() {
 
     private lateinit var editUrl: EditText
-    private lateinit var btnStart: Button
-    private lateinit var btnClear: Button
-    private lateinit var btnSave: Button
+    private lateinit var editSelector: EditText
+    private lateinit var editRegex: EditText
+    private lateinit var editUserAgent: EditText
+    private lateinit var editCookie: EditText
+    private lateinit var editDelay: EditText
+    private lateinit var spinnerMode: Spinner
+    private lateinit var layoutAdvanced: LinearLayout
+    private lateinit var tvAdvancedToggle: TextView
+    
+    private lateinit var layoutUi: LinearLayout
+    private lateinit var tvUiToggle: TextView
+    private lateinit var seekBarFontSize: SeekBar
+    private lateinit var spinnerTextColor: Spinner
+    private lateinit var spinnerBgColor: Spinner
+    private lateinit var scrollViewResult: ScrollView
+
+    private lateinit var tvStatus: TextView
     private lateinit var resultText: TextView
+    private lateinit var btnStart: Button
+
+    private var scrapedData = mutableListOf<String>()
+    private var isAdvancedVisible = false
+    private var isUiVisible = false
+
+    private val extractModes = arrayOf("提取纯文本 (Text)", "提取链接 (href)", "提取图片地址 (src)", "提取 HTML 源码")
+    private val modeKeys = arrayOf("text", "href", "src", "html")
+
+    private val textColorNames = arrayOf("极客绿", "纯白", "黑客红", "科技蓝")
+    private val textColorValues = arrayOf("#00FF00", "#FFFFFF", "#FF4444", "#00BFFF")
+    
+    private val bgColorNames = arrayOf("深邃黑", "暗夜灰", "护眼绿", "纯白")
+    private val bgColorValues = arrayOf("#121212", "#2D2D2D", "#CCE8CF", "#FFFFFF")
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
-        .writeTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
         .build()
-
-    private var scrapedData = mutableListOf<String>()
-
-    private val permissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (!granted) {
-            Toast.makeText(this, "未授予存储权限，保存功能受限", Toast.LENGTH_SHORT).show()
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        editUrl = findViewById(R.id.editUrl)
-        btnStart = findViewById(R.id.btnStart)
-        btnClear = findViewById(R.id.btnClear)
-        btnSave = findViewById(R.id.btnSave)
-        resultText = findViewById(R.id.resultText)
+        initViews()
+        setupSpinners()
+        setupListeners()
+        loadConfig()
+    }
 
-        checkStoragePermission()
+    private fun initViews() {
+        editUrl = findViewById(R.id.editUrl)
+        editSelector = findViewById(R.id.editSelector)
+        editRegex = findViewById(R.id.editRegex)
+        editUserAgent = findViewById(R.id.editUserAgent)
+        editCookie = findViewById(R.id.editCookie)
+        editDelay = findViewById(R.id.editDelay)
+        spinnerMode = findViewById(R.id.spinnerMode)
+        layoutAdvanced = findViewById(R.id.layoutAdvanced)
+        tvAdvancedToggle = findViewById(R.id.tvAdvancedToggle)
+        
+        layoutUi = findViewById(R.id.layoutUi)
+        tvUiToggle = findViewById(R.id.tvUiToggle)
+        seekBarFontSize = findViewById(R.id.seekBarFontSize)
+        spinnerTextColor = findViewById(R.id.spinnerTextColor)
+        spinnerBgColor = findViewById(R.id.spinnerBgColor)
+        scrollViewResult = findViewById(R.id.scrollViewResult)
+
+        tvStatus = findViewById(R.id.tvStatus)
+        resultText = findViewById(R.id.resultText)
+        btnStart = findViewById(R.id.btnStart)
+    }
+
+    private fun setupSpinners() {
+        val adapterMode = ArrayAdapter(this, android.R.layout.simple_spinner_item, extractModes)
+        adapterMode.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerMode.adapter = adapterMode
+
+        val adapterTextColor = ArrayAdapter(this, android.R.layout.simple_spinner_item, textColorNames)
+        adapterTextColor.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerTextColor.adapter = adapterTextColor
+
+        val adapterBgColor = ArrayAdapter(this, android.R.layout.simple_spinner_item, bgColorNames)
+        adapterBgColor.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerBgColor.adapter = adapterBgColor
+    }
+
+    private fun setupListeners() {
+        tvAdvancedToggle.setOnClickListener {
+            isAdvancedVisible = !isAdvancedVisible
+            layoutAdvanced.visibility = if (isAdvancedVisible) View.VISIBLE else View.GONE
+            tvAdvancedToggle.text = if (isAdvancedVisible) "▼ 高级请求设置" else "▶ 高级请求设置"
+        }
+
+        tvUiToggle.setOnClickListener {
+            isUiVisible = !isUiVisible
+            layoutUi.visibility = if (isUiVisible) View.VISIBLE else View.GONE
+            tvUiToggle.text = if (isUiVisible) "▼ 外观与界面调节" else "▶ 外观与界面调节"
+        }
+
+        seekBarFontSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                resultText.textSize = (12 + progress).toFloat()
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) { saveConfig() }
+        })
+
+        spinnerTextColor.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                resultText.setTextColor(android.graphics.Color.parseColor(textColorValues[position]))
+                saveConfig()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        spinnerBgColor.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                scrollViewResult.setBackgroundColor(android.graphics.Color.parseColor(bgColorValues[position]))
+                saveConfig()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
 
         btnStart.setOnClickListener {
             val url = editUrl.text.toString().trim()
-            if (url.isBlank() || (!url.startsWith("http://") && !url.startsWith("https://"))) {
-                Toast.makeText(this, "请输入正确的 URL", Toast.LENGTH_SHORT).show()
+            if (url.isBlank() || (!url.startsWith("http"))) {
+                Toast.makeText(this, "请输入有效的 URL", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            saveConfig()
             startScraping(url)
         }
 
-        btnClear.setOnClickListener {
-            editUrl.setText("")
-            scrapedData.clear()
-            resultText.text = ""
+        findViewById<Button>(R.id.btnSaveTxt).setOnClickListener {
+            if (scrapedData.isEmpty()) return@setOnClickListener
+            val content = scrapedData.joinToString("\n\n")
+            saveFile("txt", "text/plain", content)
         }
 
-        btnSave.setOnClickListener {
-            if (scrapedData.isEmpty()) {
-                Toast.makeText(this, "没有数据可以保存", Toast.LENGTH_SHORT).show()
-            } else {
-                saveResults()
-            }
-        }
-    }
-
-    private fun checkStoragePermission() {
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                permissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
+        findViewById<Button>(R.id.btnSaveJson).setOnClickListener {
+            if (scrapedData.isEmpty()) return@setOnClickListener
+            val jsonStr = scrapedData.joinToString(",\n") { "  \"${it.replace("\"", "\\\"").replace("\n", " ")}\"" }
+            val content = "{\n  \"count\": ${scrapedData.size},\n  \"data\": [\n$jsonStr\n  ]\n}"
+            saveFile("json", "application/json", content)
         }
     }
 
     private fun startScraping(url: String) {
-        resultText.text = "正在抓取... 请稍候"
+        tvStatus.text = "状态：正在请求中，请稍候..."
+        resultText.text = ""
+        scrapedData.clear()
         btnStart.isEnabled = false
 
+        val selector = editSelector.text.toString().trim()
+        val regexStr = editRegex.text.toString().trim()
+        val ua = editUserAgent.text.toString().trim().ifBlank { "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36" }
+        val cookie = editCookie.text.toString().trim()
+        val delayMs = editDelay.text.toString().toLongOrNull() ?: 0L
+        val extractMode = modeKeys[spinnerMode.selectedItemPosition]
+
         lifecycleScope.launch {
+            if (delayMs > 0) {
+                tvStatus.text = "状态：防封延迟中 (${delayMs}ms)..."
+                delay(delayMs)
+            }
+
             val result = withContext(Dispatchers.IO) {
-                runCatching { fetchAndParse(url) }
+                runCatching { 
+                    var data = fetchAndParse(url, selector, ua, cookie, extractMode)
+                    if (regexStr.isNotBlank() && data.isNotEmpty()) {
+                        val regex = Regex(regexStr)
+                        val matchedList = mutableListOf<String>()
+                        data.forEach { rawText ->
+                            regex.findAll(rawText).forEach { matchResult ->
+                                matchedList.add(matchResult.value)
+                            }
+                        }
+                        data = matchedList
+                    }
+                    data
+                }
             }
             btnStart.isEnabled = true
 
             result.onSuccess { data ->
-                scrapedData.clear()
                 scrapedData.addAll(data)
-                resultText.text = if (data.isEmpty()) "未抓取到任何内容" else "共抓取 ${data.size} 条：\n\n" + data.take(500).joinToString("\n")
-                Toast.makeText(this@MainActivity, "抓取完成", Toast.LENGTH_SHORT).show()
+                if (data.isEmpty()) {
+                    tvStatus.text = "状态：执行完毕，未找到内容"
+                    resultText.text = "未抓取到数据。\n1. 请检查CSS选择器是否正确\n2. 尝试提取 HTML 源码"
+                } else {
+                    tvStatus.text = "状态：成功提取 ${data.size} 条数据"
+                    val displayList = data.take(2000)
+                    val displayStr = displayList.joinToString("\n\n")
+                    resultText.text = if (data.size > 2000) {
+                        "$displayStr\n\n...(数据过多，仅显示前2000条，完整数据请保存)"
+                    } else {
+                        displayStr
+                    }
+                }
             }.onFailure { e ->
-                resultText.text = "抓取失败: ${e.message}"
+                tvStatus.text = "状态：执行失败"
+                resultText.text = "错误信息：\n${e.message}\n\n请检查网络或 Cookie。"
             }
         }
     }
 
-    private fun fetchAndParse(url: String): List<String> {
-        val request = Request.Builder()
+    private fun fetchAndParse(url: String, selector: String, ua: String, cookie: String, mode: String): List<String> {
+        val reqBuilder = Request.Builder()
             .url(url)
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36")
-            .build()
+            .header("User-Agent", ua)
+        
+        if (cookie.isNotBlank()) reqBuilder.header("Cookie", cookie)
 
-        client.newCall(request).execute().use { response ->
+        client.newCall(reqBuilder.build()).execute().use { response ->
             if (!response.isSuccessful) throw RuntimeException("HTTP ${response.code}")
             val html = response.body?.string() ?: throw RuntimeException("响应为空")
             val doc: Document = Jsoup.parse(html, url)
-            return extractData(doc)
+            val list = mutableListOf<String>()
+
+            val targetElements = if (selector.isBlank()) doc.select("body") else doc.select(selector)
+
+            targetElements.forEach { element ->
+                when (mode) {
+                    "text" -> {
+                        val t = element.text().trim()
+                        if (t.isNotEmpty()) list.add(t)
+                    }
+                    "href" -> {
+                        val href = element.absUrl("href")
+                        if (href.isNotEmpty()) list.add(href)
+                    }
+                    "src" -> {
+                        val src = element.absUrl("src")
+                        if (src.isNotEmpty()) list.add(src)
+                    }
+                    "html" -> {
+                        val h = element.html().trim()
+                        if (h.isNotEmpty()) list.add(h)
+                    }
+                }
+            }
+            return list
         }
     }
 
-    private fun extractData(doc: Document): List<String> {
-        val list = mutableListOf<String>()
-        doc.title().takeIf { it.isNotBlank() }?.let { list.add("【页面标题】$it") }
-        doc.select("h1, h2, h3, p").forEach {
-            val t = it.text().trim()
-            if (t.isNotEmpty()) list.add(t)
-        }
-        return list
-    }
-
-
-private fun saveResults() {
-        val fileName = "scraped_${System.currentTimeMillis()}.txt"
-        val content = scrapedData.joinToString("\n")
-
+    private fun saveFile(ext: String, mimeType: String, content: String) {
+        val fileName = "scraped_${System.currentTimeMillis()}.$ext"
         lifecycleScope.launch {
             val ok = withContext(Dispatchers.IO) {
-                runCatching { writeFile(fileName, content) }.getOrDefault(false)
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val values = ContentValues().apply {
+                            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                        }
+                        val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                        contentResolver.openOutputStream(uri!!)?.use { it.write(content.toByteArray()) }
+                    } else {
+                        val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        File(dir, fileName).writeText(content)
+                    }
+                    true
+                } catch (e: Exception) {
+                    false
+                }
             }
             Toast.makeText(this@MainActivity, if (ok) "已保存到 Downloads/$fileName" else "保存失败", Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun writeFile(fileName: String, content: String): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-            }
-            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
-            contentResolver.openOutputStream(uri)?.use { it.write(content.toByteArray()) } ?: return false
-            true
-        } else {
-            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!dir.exists()) dir.mkdirs()
-            File(dir, fileName).writeText(content)
-            true
+    private fun saveConfig() {
+        val prefs = getSharedPreferences("scrapper_prefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putString("url", editUrl.text.toString())
+            putString("selector", editSelector.text.toString())
+            putString("regex", editRegex.text.toString())
+            putString("ua", editUserAgent.text.toString())
+            putString("cookie", editCookie.text.toString())
+            putString("delay", editDelay.text.toString())
+            putInt("mode", spinnerMode.selectedItemPosition)
+            putInt("fontSizeProgress", seekBarFontSize.progress)
+            putInt("textColorIndex", spinnerTextColor.selectedItemPosition)
+            putInt("bgColorIndex", spinnerBgColor.selectedItemPosition)
+            apply()
         }
     }
+
+    private fun loadConfig() {
+        val prefs = getSharedPreferences("scrapper_prefs", Context.MODE_PRIVATE)
+        editUrl.setText(prefs.getString("url", ""))
+        editSelector.setText(prefs.getString("selector", ""))
+        editRegex.setText(prefs.getString("regex", ""))
+        editUserAgent.setText(prefs.getString("ua", ""))
+        editCookie.setText(prefs.getString("cookie", ""))
+        editDelay.setText(prefs.getString("delay", "0"))
+        spinnerMode.setSelection(prefs.getInt("mode", 0))
+
+        val fontProgress = prefs.getInt("fontSizeProgress", 2)
+        seekBarFontSize.progress = fontProgress
+        resultText.textSize = (12 + fontProgress).toFloat()
+
+        val textColorIdx = prefs.getInt("textColorIndex", 0)
+        spinnerTextColor.setSelection(textColorIdx)
+        resultText.setTextColor(android.graphics.Color.parseColor(textColorValues[textColorIdx]))
+
+        val bgColorIdx = prefs.getInt("bgColorIndex", 0)
+        spinnerBgColor.setSelection(bgColorIdx)
+        scrollViewResult.setBackgroundColor(android.graphics.Color.parseColor(bgColorValues[bgColorIdx]))
     }
+}
