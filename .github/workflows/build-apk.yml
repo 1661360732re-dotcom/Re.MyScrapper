@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# 授予创建 Release 的写入权限（非常重要）
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,8 +31,13 @@ jobs:
     - name: Build Debug APK
       run: gradle assembleDebug
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
+    # 自动创建 Release 并上传 APK 直链
+    - name: Upload APK to Release
+      uses: softprops/action-gh-release@v2
       with:
-        name: app-debug-apk
-        path: app/build/outputs/apk/debug/*.apk
+        tag_name: v1.0.${{ github.run_number }}
+        name: 网页抓取器 v1.0.${{ github.run_number }}
+        body: "云端自动构建，点击下方 Assets 中的 app-debug.apk 直接下载安装。"
+        files: app/build/outputs/apk/debug/app-debug.apk
+        draft: false
+        prerelease: false
