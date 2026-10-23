@@ -67,10 +67,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        initViews()
-        setupSpinners()
-        setupListeners()
-        loadConfig()
+        // 防崩溃保护：安全初始化
+        try {
+            initViews()
+            setupSpinners()
+            setupListeners()
+            loadConfig()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "启动初始化异常: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun initViews() {
@@ -119,7 +125,7 @@ class MainActivity : AppCompatActivity() {
 
         tvUiToggle.setOnClickListener {
             isUiVisible = !isUiVisible
-            layoutUi.visibility = if (isUiVisible) View.VISIBLE else View.GONE
+layoutUi.visibility = if (isUiVisible) View.VISIBLE else View.GONE
             tvUiToggle.text = if (isUiVisible) "▼ 外观与界面调节" else "▶ 外观与界面调节"
         }
 
@@ -133,16 +139,20 @@ class MainActivity : AppCompatActivity() {
 
         spinnerTextColor.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                resultText.setTextColor(android.graphics.Color.parseColor(textColorValues[position]))
-                saveConfig()
+                if (position in textColorValues.indices) {
+                    resultText.setTextColor(android.graphics.Color.parseColor(textColorValues[position]))
+                    saveConfig()
+                }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         spinnerBgColor.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                scrollViewResult.setBackgroundColor(android.graphics.Color.parseColor(bgColorValues[position]))
-                saveConfig()
+                if (position in bgColorValues.indices) {
+                    scrollViewResult.setBackgroundColor(android.graphics.Color.parseColor(bgColorValues[position]))
+                    saveConfig()
+                }
             }
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
@@ -172,7 +182,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startScraping(url: String) {
-        tvStatus.text = "状态：正在请求中，请稍候..."
+        tvStatus.text = "状态：正在请求中..."
         resultText.text = ""
         scrapedData.clear()
         btnStart.isEnabled = false
@@ -211,23 +221,23 @@ class MainActivity : AppCompatActivity() {
             result.onSuccess { data ->
                 scrapedData.addAll(data)
                 if (data.isEmpty()) {
-                    tvStatus.text = "状态：执行完毕，未找到内容"
-                    resultText.text = "未抓取到数据。\n1. 请检查CSS选择器是否正确\n2. 尝试提取 HTML 源码"
+                    tvStatus.text = "状态：未找到内容"
+                    resultText.text = "未抓取到数据。\n1. 请检查选择器\n2. 尝试提取源码"
                 } else {
-                    tvStatus.text = "状态：成功提取 ${data.size} 条数据"
+                    tvStatus.text = "状态：成功提取 ${data.size} 条"
                     val displayList = data.take(2000)
                     val displayStr = displayList.joinToString("\n\n")
                     resultText.text = if (data.size > 2000) {
-                        "$displayStr\n\n...(数据过多，仅显示前2000条，完整数据请保存)"
+                        "$displayStr\n\n...(仅显示前2000条)"
                     } else {
                         displayStr
                     }
                 }
             }.onFailure { e ->
                 tvStatus.text = "状态：执行失败"
-                resultText.text = "错误信息：\n${e.message}\n\n请检查网络或 Cookie。"
+                resultText.text = "错误信息：\n${e.message}"
             }
-        }
+}
     }
 
     private fun fetchAndParse(url: String, selector: String, ua: String, cookie: String, mode: String): List<String> {
@@ -291,7 +301,7 @@ class MainActivity : AppCompatActivity() {
                     false
                 }
             }
-            Toast.makeText(this@MainActivity, if (ok) "已保存到 Downloads/$fileName" else "保存失败", Toast.LENGTH_LONG).show()
+            Toast.makeText(this@MainActivity, if (ok) "已保存到 Downloads" else "保存失败", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -320,18 +330,24 @@ class MainActivity : AppCompatActivity() {
         editUserAgent.setText(prefs.getString("ua", ""))
         editCookie.setText(prefs.getString("cookie", ""))
         editDelay.setText(prefs.getString("delay", "0"))
-        spinnerMode.setSelection(prefs.getInt("mode", 0))
+        
+        val modeIdx = prefs.getInt("mode", 0)
+        if (modeIdx in extractModes.indices) spinnerMode.setSelection(modeIdx)
 
         val fontProgress = prefs.getInt("fontSizeProgress", 2)
         seekBarFontSize.progress = fontProgress
         resultText.textSize = (12 + fontProgress).toFloat()
 
         val textColorIdx = prefs.getInt("textColorIndex", 0)
-        spinnerTextColor.setSelection(textColorIdx)
-        resultText.setTextColor(android.graphics.Color.parseColor(textColorValues[textColorIdx]))
+        if (textColorIdx in textColorNames.indices) {
+            spinnerTextColor.setSelection(textColorIdx)
+            resultText.setTextColor(android.graphics.Color.parseColor(textColorValues[textColorIdx]))
+        }
 
         val bgColorIdx = prefs.getInt("bgColorIndex", 0)
-        spinnerBgColor.setSelection(bgColorIdx)
-        scrollViewResult.setBackgroundColor(android.graphics.Color.parseColor(bgColorValues[bgColorIdx]))
+        if (bgColorIdx in bgColorNames.indices) {
+            spinnerBgColor.setSelection(bgColorIdx)
+            scrollViewResult.setBackgroundColor(android.graphics.Color.parseColor(bgColorValues[bgColorIdx]))
+        }
     }
 }
