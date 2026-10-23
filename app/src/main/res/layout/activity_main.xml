@@ -226,6 +226,7 @@ android:layout_height="wrap_content"
             android:textIsSelectable="true"
             android:textSize="14sp"
             android:fontFamily="monospace" />
-    </ScrollView﹥
-        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
+
 </LinearLayout>
